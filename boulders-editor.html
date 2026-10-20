@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boulders editor</title>
+<style>
+  :root { --bg:#f5f5f7; --card:#fff; --line:#ddd; --text:#222; --muted:#777; --accent:#1e88e5; --danger:#d32f2f; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  header { position:sticky; top:0; z-index:5; background:#fff; border-bottom:1px solid var(--line); padding:10px 16px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  header h1 { font-size:16px; margin:0 12px 0 0; }
+  button, select { font:inherit; padding:6px 12px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.danger { color:var(--danger); }
+  button.small { padding:2px 8px; }
+  .spacer { flex:1; }
+  #status { color:var(--muted); font-size:12px; }
+  main { max-width:1000px; margin:16px auto; padding:0 16px; display:grid; gap:10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:start; }
+  .swatch { width:44px; height:44px; border-radius:50%; border:1px solid #0003; }
+  .fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px 12px; }
+  label { display:flex; flex-direction:column; font-size:11px; color:var(--muted); gap:2px; }
+  input[type=text], input[type=number], input:not([type]) { font:inherit; padding:5px 7px; border:1px solid var(--line); border-radius:5px; width:100%; color:var(--text); }
+  input[type=color] { width:100%; height:30px; padding:0; border:1px solid var(--line); border-radius:5px; background:#fff; }
+  .wide { grid-column:1 / -1; }
+  .colorrow { display:flex; gap:6px; align-items:center; }
+  .videos { display:grid; gap:4px; }
+  .videorow { display:flex; gap:4px; }
+  .actions { display:flex; flex-direction:column; gap:6px; }
+  .thumb { max-width:120px; max-height:80px; border-radius:4px; margin-top:4px; }
+  .empty { text-align:center; color:var(--muted); padding:40px; }
+  dialog { width:min(800px,92vw); border:1px solid var(--line); border-radius:8px; }
+  dialog textarea { width:100%; height:60vh; font:12px/1.4 ui-monospace, monospace; }
+  dialog .row { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Boulders editor</h1>
+  <button id="add" class="primary">+ Add boulder</button>
+  <select id="zoneFilter" title="Filter by zone"></select>
+  <button id="load">Load JSON…</button>
+  <button id="raw">Raw JSON</button>
+  <button id="download" class="primary">Download JSON</button>
+  <span class="spacer"></span>
+  <span id="status"></span>
+  <input type="file" id="file" accept=".json,application/json" hidden>
+</header>
+<main id="list"></main>
+
+<dialog id="rawDialog">
+  <textarea id="rawText" spellcheck="false"></textarea>
+  <div class="row">
+    <span id="rawErr" style="color:var(--danger);margin-right:auto"></span>
+    <button id="rawCancel">Close</button>
+    <button id="rawApply" class="primary">Apply</button>
+  </div>
+</dialog>
+
+<script>
+let data = [
+  { "id": "z1-01", "color": "#e53935", "colorName": "Rouge",  "zone": 1, "grade": 2,  "photo": "photos/z1-01.jpg", "videos": ["https://www.youtube.com/watch?v=dQw4w9WgXcQ"] },
+  { "id": "z1-02", "color": "#1e88e5", "colorName": "Bleu",   "zone": 1, "grade": 4,  "photo": "photos/z1-02.jpg", "videos": [] },
+  { "id": "z1-03", "color": "#fdd835", "colorName": "Jaune",  "zone": 1, "grade": 6,  "photo": "photos/z1-03.jpg", "videos": ["https://youtu.be/dQw4w9WgXcQ", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"] },
+  { "id": "z2-01", "color": "#43a047", "colorName": "Vert",   "zone": 2, "grade": 1,  "photo": "photos/z2-01.jpg", "videos": [] },
+  { "id": "z2-02", "color": "#8e24aa", "colorName": "Violet", "zone": 2, "grade": 5,  "photo": "photos/z2-02.jpg", "videos": ["https://www.youtube.com/watch?v=dQw4w9WgXcQ"] },
+  { "id": "z2-03", "color": "#212121", "colorName": "Noir",   "zone": 2, "grade": 8,  "photo": "photos/z2-03.jpg", "videos": [] },
+  { "id": "z3-01", "color": "#fb8c00", "colorName": "Orange", "zone": 3, "grade": 3,  "photo": "photos/z3-01.jpg", "videos": [] },
+  { "id": "z3-02", "color": "#e53935", "color2": "#ffffff", "colorName": "Rouge et blanc", "zone": 3, "grade": 5, "photo": "photos/z3-02.jpg", "videos": ["https://www.youtube.com/watch?v=dQw4w9WgXcQ"] },
+  { "id": "z3-03", "color": "#1e88e5", "colorName": "Bleu",   "zone": 3, "grade": 7,  "photo": "photos/z3-03.jpg", "videos": [] },
+  { "id": "z4-01", "color": "#43a047", "colorName": "Vert",   "zone": 4, "grade": 3,  "photo": "photos/z4-01.jpg", "videos": [] },
+  { "id": "z4-02", "color": "#fdd835", "color2": "#212121", "colorName": "Jaune et noir", "zone": 4, "grade": 6, "photo": "photos/z4-02.jpg", "videos": ["https://www.youtube.com/watch?v=dQw4w9WgXcQ"] },
+  { "id": "z4-03", "color": "#8e24aa", "colorName": "Violet", "zone": 4, "grade": 10, "photo": "photos/z4-03.jpg", "videos": [] }
+];
+
+const $ = s => document.querySelector(s);
+const listEl = $('#list'), zoneSel = $('#zoneFilter'), statusEl = $('#status');
+let zoneFilter = 'all';
+let dirty = false;
+
+const ORDER = ['id','color','color2','colorName','zone','grade','photo','videos'];
+function normalize(b) {
+  const out = {};
+  ORDER.forEach(k => { if (k in b && !(k === 'color2' && !b.color2)) out[k] = b[k]; });
+  Object.keys(b).forEach(k => { if (!(k in out)) out[k] = b[k]; }); // keep unknown keys
+  return out;
+}
+const PREFIX = 'photos/';
+const stripPrefix = p => String(p ?? '').startsWith(PREFIX) ? p.slice(PREFIX.length) : String(p ?? '');
+// Ids are auto-generated: z<zone>-<count within zone, in list order>
+function prepare() {
+  data.sort((a, b) => (a.zone || 0) - (b.zone || 0)); // stable: keeps order within a zone
+  const counts = {};
+  data.forEach(b => {
+    counts[b.zone] = (counts[b.zone] || 0) + 1;
+    b.id = `z${b.zone}-${String(counts[b.zone]).padStart(2, '0')}`;
+  });
+}
+function importData(arr) {
+  data = arr.map(b => ({ ...b, photo: stripPrefix(b.photo), videos: b.videos || [] }));
+  prepare();
+}
+const json = () => JSON.stringify(
+  data.map(b => normalize({ ...b, photo: PREFIX + b.photo })), null, 2);
+
+function setDirty(v = true) {
+  dirty = v;
+  statusEl.textContent = v ? 'Unsaved changes' : '';
+}
+
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function renderZones() {
+  const zones = [...new Set(data.map(b => b.zone))].sort((a, b) => a - b);
+  zoneSel.innerHTML = '<option value="all">All zones</option>' +
+    zones.map(z => `<option value="${z}">Zone ${z}</option>`).join('');
+  zoneSel.value = zones.map(String).includes(zoneFilter) ? zoneFilter : 'all';
+  zoneFilter = zoneSel.value;
+}
+
+function render() {
+  const items = data.map((b, i) => ({ b, i })).filter(({ b }) => zoneFilter === 'all' || String(b.zone) === zoneFilter);
+  if (!items.length) { listEl.innerHTML = '<div class="empty">No boulders.</div>'; return; }
+  listEl.innerHTML = items.map(({ b, i }) => {
+    const bg = b.color2
+      ? `linear-gradient(135deg, ${esc(b.color)} 50%, ${esc(b.color2)} 50%)`
+      : esc(b.color);
+    return `
+    <div class="card" data-i="${i}">
+      <div class="swatch" style="background:${bg}"></div>
+      <div class="fields">
+        <label>Color name <input data-k="colorName" value="${esc(b.colorName)}"></label>
+        <label>Zone <select data-k="zone">${[1,2,3,4].map(n => `<option ${n === b.zone ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label>Grade <select data-k="grade">${Array.from({length:10}, (_, k) => k + 1).map(n => `<option ${n === b.grade ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label>Color <input data-k="color" type="color" value="${esc(b.color || '#000000')}"></label>
+        <label>Second color
+          <span class="colorrow">
+            <input data-k="color2" type="color" value="${esc(b.color2 || '#ffffff')}" ${b.color2 ? '' : 'disabled'}>
+            <button class="small" data-act="toggle2">${b.color2 ? 'Remove' : 'Add'}</button>
+          </span>
+        </label>
+        <label class="wide">Photo (file name)
+          <input data-k="photo" value="${esc(b.photo)}" placeholder="example.jpg">
+          <img class="thumb" src="${PREFIX}${esc(b.photo)}" alt="" onerror="this.style.display='none'">
+        </label>
+        <div class="wide videos">
+          <span style="font-size:11px;color:var(--muted)">Videos</span>
+          ${(b.videos || []).map((v, j) => `
+            <div class="videorow">
+              <input data-video="${j}" value="${esc(v)}">
+              <button class="small danger" data-act="delvideo" data-j="${j}" title="Remove">✕</button>
+            </div>`).join('')}
+          <div><button class="small" data-act="addvideo">+ Add video</button></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="small danger" data-act="del">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Field edits (no re-render, so focus is kept)
+listEl.addEventListener('input', e => {
+  const card = e.target.closest('.card'); if (!card) return;
+  const b = data[+card.dataset.i];
+  const k = e.target.dataset.k;
+  if (k) {
+    if (k === 'zone' || k === 'grade') { b[k] = Number(e.target.value); setDirty(); return; }
+    b[k] = e.target.value;
+    if (k === 'color' || k === 'color2') {
+      card.querySelector('.swatch').style.background = b.color2
+        ? `linear-gradient(135deg, ${b.color} 50%, ${b.color2} 50%)` : b.color;
+    }
+    if (k === 'photo') {
+      const img = card.querySelector('.thumb'); img.style.display = ''; img.src = PREFIX + b.photo;
+    }
+  } else if (e.target.dataset.video !== undefined) {
+    b.videos[+e.target.dataset.video] = e.target.value;
+  }
+  setDirty();
+});
+listEl.addEventListener('change', e => {
+  if (e.target.dataset.k === 'zone') { prepare(); renderZones(); render(); }
+});
+
+listEl.addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]'); if (!btn) return;
+  const card = btn.closest('.card'); const i = +card.dataset.i; const b = data[i];
+  switch (btn.dataset.act) {
+    case 'toggle2':
+      if (b.color2) delete b.color2; else b.color2 = '#ffffff';
+      break;
+    case 'addvideo': (b.videos ||= []).push(''); break;
+    case 'delvideo': b.videos.splice(+btn.dataset.j, 1); break;
+    case 'del':
+      if (!confirm('Delete this boulder?')) return;
+      data.splice(i, 1); break;
+  }
+  setDirty(); prepare(); renderZones(); render();
+});
+
+$('#add').onclick = () => {
+  const z = zoneFilter === 'all' ? 1 : Number(zoneFilter);
+  data.push({ id: '', color: '#e53935', colorName: 'Rouge', zone: z, grade: 1, photo: '', videos: [] });
+  prepare();
+  setDirty(); renderZones(); render();
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+};
+
+zoneSel.onchange = () => { zoneFilter = zoneSel.value; render(); };
+
+$('#download').onclick = () => {
+  const blob = new Blob([json() + '\n'], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'boulders.json'; a.click();
+  URL.revokeObjectURL(a.href);
+  setDirty(false);
+};
+
+$('#load').onclick = () => $('#file').click();
+$('#file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const parsed = JSON.parse(await f.text());
+    if (!Array.isArray(parsed)) throw new Error('JSON root must be an array');
+    data = parsed; zoneFilter = 'all'; setDirty(false); renderZones(); render();
+  } catch (err) { alert('Could not load file: ' + err.message); }
+  e.target.value = '';
+};
+
+const dlg = $('#rawDialog');
+$('#raw').onclick = () => { $('#rawText').value = json(); $('#rawErr').textContent = ''; dlg.showModal(); };
+$('#rawCancel').onclick = () => dlg.close();
+$('#rawApply').onclick = () => {
+  try {
+    const parsed = JSON.parse($('#rawText').value);
+    if (!Array.isArray(parsed)) throw new Error('JSON root must be an array');
+    data = parsed; setDirty(); renderZones(); render(); dlg.close();
+  } catch (err) { $('#rawErr').textContent = err.message; }
+};
+
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+renderZones(); render();
+</script>
+</body>
+</html>
