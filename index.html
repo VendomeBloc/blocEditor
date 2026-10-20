@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title> Bloc editor</title>
+<title>Bloc editor</title>
 <style>
   :root { --bg:#f5f5f7; --card:#fff; --line:#ddd; --text:#222; --muted:#777; --accent:#1e88e5; --danger:#d32f2f; }
   * { box-sizing: border-box; }
@@ -38,7 +38,7 @@
 </head>
 <body>
 <header>
-  <h1>Boulders editor</h1>
+  <h1>Bloc editor</h1>
   <button id="add" class="primary">+ Add boulder</button>
   <select id="zoneFilter" title="Filter by zone"></select>
   <button id="load">Load JSON…</button>
@@ -207,7 +207,6 @@ $('#add').onclick = () => {
   data.push({ id: '', color: '#e53935', colorName: 'Rouge', zone: z, grade: 1, photo: '', videos: [] });
   prepare();
   setDirty(); renderZones(); render();
-  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 };
 
 zoneSel.onchange = () => { zoneFilter = zoneSel.value; render(); };
@@ -226,7 +225,7 @@ $('#file').onchange = async e => {
   try {
     const parsed = JSON.parse(await f.text());
     if (!Array.isArray(parsed)) throw new Error('JSON root must be an array');
-    data = parsed; zoneFilter = 'all'; setDirty(false); renderZones(); render();
+    importData(parsed); zoneFilter = 'all'; setDirty(false); renderZones(); render();
   } catch (err) { alert('Could not load file: ' + err.message); }
   e.target.value = '';
 };
@@ -238,13 +237,13 @@ $('#rawApply').onclick = () => {
   try {
     const parsed = JSON.parse($('#rawText').value);
     if (!Array.isArray(parsed)) throw new Error('JSON root must be an array');
-    data = parsed; setDirty(); renderZones(); render(); dlg.close();
+    importData(parsed); setDirty(); renderZones(); render(); dlg.close();
   } catch (err) { $('#rawErr').textContent = err.message; }
 };
 
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
-renderZones(); render();
+importData(data); renderZones(); render();
 </script>
 </body>
 </html>
