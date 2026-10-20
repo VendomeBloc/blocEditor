@@ -17,7 +17,7 @@
   button.small { padding:2px 8px; }
   .spacer { flex:1; }
   #status { color:var(--muted); font-size:12px; }
-  main { max-width:1000px; margin:16px auto; padding:0 16px; display:grid; gap:10px; }
+  main { overflow-anchor:none; max-width:1000px; margin:16px auto; padding:0 16px; display:grid; gap:10px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:start; }
   .swatch { width:44px; height:44px; border-radius:50%; border:1px solid #0003; }
   .fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px 12px; }
@@ -121,6 +121,11 @@ function renderZones() {
 }
 
 function render() {
+  const y = window.scrollY;
+  renderList();
+  window.scrollTo(0, y); // keep the scroll position after every re-render
+}
+function renderList() {
   const items = data.map((b, i) => ({ b, i })).filter(({ b }) => zoneFilter === 'all' || String(b.zone) === zoneFilter);
   if (!items.length) { listEl.innerHTML = '<div class="empty">No boulders.</div>'; return; }
   listEl.innerHTML = items.map(({ b, i }) => {
